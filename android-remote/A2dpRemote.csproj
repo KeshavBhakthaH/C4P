@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>A2dpRemote</RootNamespace>
+    <ApplicationId>dev.a2dpremote.remote</ApplicationId>
+    <ApplicationTitle>C4P</ApplicationTitle>
+    <ApplicationIdGuid>7C42F9A1-6B2E-4D5A-9C31-0A55E8B21F44</ApplicationIdGuid>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AndroidResource Include="Resources\**\*.png" />
+  </ItemGroup>
+
+</Project>

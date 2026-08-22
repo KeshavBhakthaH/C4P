@@ -1,0 +1,17 @@
+# .NET / Visual Studio
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.sln.docstates
+
+# Android
+*.apk.idsig
+*.keystore
+*.jks
+.android/
+
+# OS junk
+Thumbs.db
+.DS_Store

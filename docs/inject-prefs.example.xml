@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<!--
+  Dev-only template: edit these values, then follow docs/SETUP.md section 6
+  to inject into a debug build's shared_prefs.
+-->
+<map>
+    <string name="pc_mac">AA:BB:CC:DD:EE:FF</string>
+    <string name="pc_ip">192.168.1.50</string>
+</map>
