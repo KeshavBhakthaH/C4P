@@ -30,6 +30,7 @@ Key behaviors:
 **PC side**
 - Windows 10 2004+ or Windows 11
 - A Bluetooth adapter
+- [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (x64) — one-time install
 
 **Phone side**
 - Android 8.0+ (API 26); tested on API 34
@@ -42,7 +43,7 @@ Both devices must be **paired beforehand** in normal OS settings. Never pair whi
 See [docs/SETUP.md](docs/SETUP.md) for the full walkthrough (firewall rule, finding your PC's MAC, troubleshooting). Short version:
 
 1. Pair phone ↔ PC in Windows/Android Bluetooth settings.
-2. Run `pc-tray`'s `C4P.exe` (self-contained, no runtime install needed).
+2. Run `pc-tray`'s `C4P.exe` (needs the .NET 8 Desktop Runtime — see Requirements).
 3. Install `android-remote` APK.
 4. In the app: open **Setup**, enter the PC's LAN IP and Bluetooth MAC, hit **Save MAC + restart sink service**.
 5. Audio should route to the PC within seconds. Control via the notification or the single Pause/Resume button.
@@ -59,7 +60,10 @@ Prereqs: [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). The And
 # PC tray (framework-dependent build for dev)
 dotnet build pc-tray/A2dpSink.csproj
 
-# Self-contained exe like the release artifact
+# PC tray (framework-dependent, like the release artifact; needs .NET 8 Desktop Runtime on target)
+dotnet publish pc-tray/A2dpSink.csproj -c Release
+
+# Self-contained variant (~170 MB, zero prerequisites)
 dotnet publish pc-tray/A2dpSink.csproj -c Release -r win-x64 --self-contained true
 
 # Android APK (debug-signed, sideloadable)

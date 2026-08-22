@@ -8,8 +8,8 @@ Pair the phone and PC through the normal OS Bluetooth settings **before** starti
 
 ## 2. PC tray app
 
-- Download `c4p-tray-win-x64.zip` from [Releases](../../releases), unzip anywhere, run `C4P.exe`.
-- Self-contained: no .NET install needed.
+- One-time prerequisite: install the [.NET 8 Desktop Runtime (x64)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) if you don't already have it (check with `dotnet --list-runtimes` — look for `Microsoft.WindowsDesktop.App 8.x`).
+- Download `c4p-tray-win-x64.zip` (~6 MB) from [Releases](../../releases), unzip anywhere, run `C4P.exe`.
 - First launch: Windows may prompt to allow inbound TCP 8080 for LAN status queries. Allow it (private networks). To add manually, run as admin:
 
 ```powershell
