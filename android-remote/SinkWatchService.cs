@@ -40,18 +40,29 @@ public class SinkWatchService : Service
 
         if (intent?.Action == ActionPause)
         {
+            EnsureInitialized("pause");
             PauseForward();
             return StartCommandResult.Sticky;
         }
 
         if (intent?.Action == ActionResume)
         {
+            EnsureInitialized("resume");
             ResumeForward();
             return StartCommandResult.Sticky;
         }
 
         Initialize();
         return StartCommandResult.Sticky;
+    }
+
+    private void EnsureInitialized(string reason)
+    {
+        if (_pcDevice is not null && _connector is not null)
+            return;
+
+        AppendLog($"Lazy init ({reason}): service state was missing.");
+        Initialize();
     }
 
     private void Initialize()
@@ -63,6 +74,7 @@ public class SinkWatchService : Service
             if (string.IsNullOrEmpty(_pcMac))
             {
                 UpdateNotification("No PC associated. Open app to associate.");
+                AppendLog("Init stopped: no PC associated.");
                 return;
             }
 
@@ -70,6 +82,7 @@ public class SinkWatchService : Service
             if (adapter is null)
             {
                 UpdateNotification("Bluetooth unavailable.");
+                AppendLog("Init stopped: Bluetooth unavailable.");
                 return;
             }
 
@@ -80,6 +93,7 @@ public class SinkWatchService : Service
             catch
             {
                 UpdateNotification("Invalid stored PC address.");
+                AppendLog($"Init stopped: invalid stored PC address ({_pcMac}).");
                 return;
             }
 
@@ -198,8 +212,8 @@ public class SinkWatchService : Service
 
         if (connector is null || device is null)
         {
-            UpdateNotification("Paused.");
-            AppendLog("Paused (not initialized).");
+            UpdateNotification("No PC associated. Open app to associate.");
+            AppendLog("Pause skipped: not initialized.");
             return;
         }
 
@@ -260,7 +274,8 @@ public class SinkWatchService : Service
 
         if (connector is null || device is null)
         {
-            UpdateNotification("Not initialized. Reopen app.");
+            UpdateNotification("No PC associated. Open app to associate.");
+            AppendLog("Resume skipped: not initialized.");
             return;
         }
 
@@ -312,6 +327,14 @@ public class SinkWatchService : Service
             }
         }
 
+        if (!connector.HasProxy)
+        {
+            AppendLog("Resume: A2DP proxy pending, retrying shortly.");
+            ScheduleRetry(3);
+            UpdateNotification("Resuming - connecting...");
+            return;
+        }
+
         if (!connector.InvokeHidden("connect", device))
         {
             ScheduleRetry(10);
@@ -348,6 +371,7 @@ public class SinkWatchService : Service
             .SetContentText(text)
             .SetSmallIcon(Android.Resource.Drawable.IcMediaPlay)
             .SetOngoing(true)
+            .SetContentIntent(PendingIntent.GetActivity(this, 0, new Intent(this, typeof(MainActivity)), immutableFlags))
             .AddAction(new Notification.Action.Builder(pauseIcon, "Pause", PendingIntent.GetService(this, 1, pauseIntent, immutableFlags)).Build())
             .AddAction(new Notification.Action.Builder(playIcon, "Resume", PendingIntent.GetService(this, 2, resumeIntent, immutableFlags)).Build());
 
