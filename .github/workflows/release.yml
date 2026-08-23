@@ -23,6 +23,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Install Android workload
+        run: dotnet workload install android
+
       - name: Publish APK (arm64, Release)
         run: dotnet publish android-remote/A2dpRemote.csproj -c Release -r android-arm64
 
