@@ -1,0 +1,60 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Publish APK (arm64, Release)
+        run: dotnet publish android-remote/A2dpRemote.csproj -c Release -r android-arm64
+
+      - name: Stage artifact
+        run: |
+          mkdir -p out
+          cp android-remote/bin/Release/net8.0-android/android-arm64/publish/dev.a2dpremote.remote-Signed.apk out/c4p-remote.apk
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/c4p-remote.apk
+
+  tray-zip:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish tray (framework-dependent)
+        run: dotnet publish pc-tray/A2dpSink.csproj -c Release
+
+      - name: Zip publish output
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Compress-Archive -Path "pc-tray/bin/Release/net8.0-windows10.0.19041.0/publish/*" -DestinationPath "out/c4p-tray-win-x64.zip" -Force
+
+      - name: Attach to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/c4p-tray-win-x64.zip

@@ -66,9 +66,9 @@ dotnet publish pc-tray/A2dpSink.csproj -c Release
 # Self-contained variant (~170 MB, zero prerequisites)
 dotnet publish pc-tray/A2dpSink.csproj -c Release -r win-x64 --self-contained true
 
-# Android APK (debug-signed, sideloadable)
-dotnet build android-remote/A2dpRemote.csproj -t:SignAndroidPackage
-# -> android-remote/bin/Debug/net8.0-android/dev.a2dpremote.remote-Signed.apk
+# Android APK (arm64-only Release, debug-signed, sideloadable)
+dotnet publish android-remote/A2dpRemote.csproj -c Release -r android-arm64
+# -> android-remote/bin/Release/net8.0-android/android-arm64/publish/dev.a2dpremote.remote-Signed.apk
 ```
 
 If your Android SDK lives somewhere unusual, pass it explicitly:
