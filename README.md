@@ -1,4 +1,4 @@
-# C4P
+# C4P - Cast for PC
 
 Turn a Windows PC into a Bluetooth speaker for your phone, with a tiny Android remote that owns the connection.
 
