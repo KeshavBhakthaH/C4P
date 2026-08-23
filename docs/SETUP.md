@@ -25,16 +25,18 @@ The tray icon appears with menu items: Connect / Disconnect / Pause forwarding /
 
 ### Find your PC's Bluetooth MAC
 
-On the phone: **Bluetooth settings > gear icon next to the PC > MAC address**.
-(Format like `1A:2B:3C:4D:5E:6F`.)
+Usually not needed: the app lists your paired devices and you just tap the PC.
+(Manual entry uses format like `1A:2B:3C:4D:5E:6F`.)
 
 ### Find your PC's LAN IP
 
 On the PC run `ipconfig` and use the IPv4 of your active adapter (Wi-Fi/Ethernet), e.g. `192.168.1.50`.
 
-### Enter both in the app
+### Associate the PC in the app
 
-Open the app > **Show setup** > fill IP + MAC > **Save MAC + restart sink service**.
+Open the app (Setup opens automatically until a PC is associated) > fill IP > **tap your PC under "Paired devices"**. The sink service restarts and associates instantly. Typing the MAC manually still works as a fallback.
+
+You can also tap the notification itself to open the app.
 
 Within seconds the notification should flip from *Connecting...* to **Connected - \<PC name\>**. Play something on the phone; audio should come out of the PC.
 

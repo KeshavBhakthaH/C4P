@@ -45,7 +45,7 @@ See [docs/SETUP.md](docs/SETUP.md) for the full walkthrough (firewall rule, find
 1. Pair phone ↔ PC in Windows/Android Bluetooth settings.
 2. Run `pc-tray`'s `Launch C4P.bat` — it starts `C4P.exe` directly if the .NET 8 Desktop Runtime is present, and otherwise offers to download and install it automatically (plain `C4P.exe` also works once the runtime is installed).
 3. Install `android-remote` APK.
-4. In the app: open **Setup**, enter the PC's LAN IP and Bluetooth MAC, hit **Save MAC + restart sink service**.
+4. In the app: open **Setup**, enter the PC's LAN IP, then tap the PC under **Paired devices** (or type its MAC and hit **Save MAC + restart sink service**).
 5. Audio should route to the PC within seconds. Control via the notification or the single Pause/Resume button.
 
 ## Security note

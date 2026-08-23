@@ -29,6 +29,8 @@ public class MainActivity : Activity
     private TextView _logView = null!;
     private EditText _ipBox = null!;
     private EditText _macBox = null!;
+    private LinearLayout _pairedList = null!;
+    private TextView _pairedHint = null!;
 
     private readonly Handler _uiHandler = new(Looper.MainLooper!);
     private Java.Lang.Runnable? _tick;
@@ -47,6 +49,7 @@ public class MainActivity : Activity
         _active = true;
         _tick ??= new Java.Lang.Runnable(Tick);
         Tick();
+        RefreshPairedDevices();
     }
 
     protected override void OnPause()
@@ -108,6 +111,18 @@ public class MainActivity : Activity
         };
         _setupSection.AddView(refreshButton, Pad(0, 8, 0, 0));
 
+        var pairedHeader = new TextView(this) { Text = "Paired devices (tap to associate)", TextSize = 14f };
+        _setupSection.AddView(pairedHeader, Pad(0, 16, 0, 0));
+
+        _pairedHint = new TextView(this) { TextSize = 12f, Text = "Loading paired devices..." };
+        _setupSection.AddView(_pairedHint, Pad(0, 8, 0, 0));
+
+        _pairedList = new LinearLayout(this) { Orientation = Orientation.Vertical };
+        _setupSection.AddView(_pairedList, Pad(0, 4, 0, 0));
+
+        var manualHeader = new TextView(this) { Text = "Or type the MAC manually", TextSize = 14f };
+        _setupSection.AddView(manualHeader, Pad(0, 16, 0, 0));
+
         _macBox = new EditText(this)
         {
             Hint = "PC Bluetooth MAC (AA:BB:CC:DD:EE:FF)",
@@ -116,22 +131,7 @@ public class MainActivity : Activity
         _setupSection.AddView(_macBox, Pad(0, 8, 0, 0));
 
         var saveMacButton = new Button(this) { Text = "Save MAC + restart sink service" };
-        saveMacButton.Click += (_, _) =>
-        {
-            string mac = _macBox.Text.Trim().ToUpperInvariant();
-
-            if (!System.Text.RegularExpressions.Regex.IsMatch(mac, @"^([0-9A-F]{2}:){5}[0-9A-F]{2}$"))
-            {
-                Log("MAC format invalid. Example: 1A:2B:3C:4D:5E:6F");
-                return;
-            }
-
-            Prefs.Set(this, "pc_mac", mac);
-            Log($"Saved {mac}. Restarting service...");
-
-            StopService(new Intent(this, typeof(SinkWatchService)));
-            StartForegroundService(new Intent(this, typeof(SinkWatchService)));
-        };
+        saveMacButton.Click += (_, _) => AssociateAndRestart(_macBox.Text);
         _setupSection.AddView(saveMacButton, Pad(0, 8, 0, 0));
 
         root.AddView(_setupSection);
@@ -151,7 +151,83 @@ public class MainActivity : Activity
         _logSection.AddView(_logView, Pad(0, 8, 0, 0));
         root.AddView(_logSection);
 
+        if (string.IsNullOrEmpty(Prefs.Get(this, "pc_mac", null)))
+        {
+            _setupSection.Visibility = ViewStates.Visible;
+            _setupToggle.Text = "Hide setup";
+        }
+
         return scroll;
+    }
+
+    private void RefreshPairedDevices()
+    {
+        if (_pairedList is null || _pairedHint is null)
+            return;
+
+        _pairedList.RemoveAllViews();
+
+        try
+        {
+            var adapter = BluetoothAdapter.DefaultAdapter;
+            if (adapter is null)
+            {
+                _pairedHint.Text = "Bluetooth unavailable on this phone.";
+                return;
+            }
+
+            var devices = adapter.BondedDevices;
+            if (devices is null || devices.Count == 0)
+            {
+                _pairedHint.Text = "No paired devices yet. Pair this phone with the PC in Android Bluetooth settings first.";
+                return;
+            }
+
+            _pairedHint.Text = string.Empty;
+
+            string? currentMac = Prefs.Get(this, "pc_mac", null);
+
+            foreach (var device in devices.OrderBy(d => d.Name ?? string.Empty))
+            {
+                bool associated = !string.IsNullOrEmpty(currentMac) &&
+                    string.Equals(currentMac, device.Address, StringComparison.OrdinalIgnoreCase);
+
+                var row = new Button(this)
+                {
+                    Text = associated
+                        ? $"{device.Name ?? "(unnamed)"} ({device.Address}) - associated"
+                        : $"{device.Name ?? "(unnamed)"} ({device.Address})"
+                };
+                row.SetAllCaps(false);
+                row.Click += (_, _) => AssociateAndRestart(device.Address);
+                _pairedList.AddView(row, Pad(0, 4, 0, 0));
+            }
+        }
+        catch
+        {
+            _pairedHint.Text = "Grant the Bluetooth permission to see paired devices.";
+        }
+    }
+
+    private void AssociateAndRestart(string? macInput)
+    {
+        string mac = (macInput ?? string.Empty).Trim().ToUpperInvariant();
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(mac, @"^([0-9A-F]{2}:){5}[0-9A-F]{2}$"))
+        {
+            Log("MAC format invalid. Example: 1A:2B:3C:4D:5E:6F");
+            Toast.MakeText(this, "MAC format invalid.", ToastLength.Long)?.Show();
+            return;
+        }
+
+        Prefs.Set(this, "pc_mac", mac);
+        _macBox.Text = mac;
+        RefreshPairedDevices();
+        Log($"Saved {mac}. Restarting sink service...");
+        Toast.MakeText(this, $"Associated with {mac}. Restarting...", ToastLength.Short)?.Show();
+
+        StopService(new Intent(this, typeof(SinkWatchService)));
+        StartForegroundService(new Intent(this, typeof(SinkWatchService)));
     }
 
     private void Tick()
