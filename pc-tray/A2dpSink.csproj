@@ -20,4 +20,8 @@
     <EmbeddedResource Include="AppIcon.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Launch C4P.bat" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
