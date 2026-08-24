@@ -50,7 +50,18 @@ See [docs/SETUP.md](docs/SETUP.md) for the full walkthrough (firewall rule, find
 
 ## Security note
 
-The PC side listens on TCP `0.0.0.0:8080` for unauthenticated status queries from the LAN. That is acceptable for a home network but **do not run this on hostile/shared networks** unless you add authentication first.
+The LAN port is authenticated with a pre-shared key:
+
+- The tray app generates a random 256-bit pairing key on first run and stores it DPAPI-encrypted (current user) at `%APPDATA%\C4P\pairing-key.txt`.
+- Pair by scanning: tray menu **Show pairing QR...** displays a code containing the PC's private IPs, port, and key; the phone app's **Scan pairing QR** reads it and completes the handshake test automatically. The key travels screen-to-camera only - never over the network.
+- Manual fallback: tray menu **Copy pairing key**, paste into the phone's Setup screen. The clipboard auto-clears after 30 seconds.
+- Every TCP session starts with an HMAC-SHA256 challenge-response handshake (`CHALLENGE <nonce>` / `AUTH <hmac>`); commands are rejected unless the phone proves knowledge of the key. The key itself never crosses the wire, and captured handshakes cannot be replayed (fresh nonce per connection).
+- After the handshake, both sides derive a session MAC key from the nonce, and every command and response is sent with an HMAC tag - a man-in-the-middle cannot read-modify or inject commands. Tampered lines are rejected (`ERR TAMPERED`).
+- The command listener only accepts connections from private/LAN addresses, caps concurrent clients, and temporarily blocks IPs after repeated failed handshakes.
+- UDP discovery requires the requester to send a random nonce and replies with an HMAC tag over it; the phone ignores announces it cannot verify once a pairing key is stored, so a rogue host can't poison the saved PC IP.
+- The phone stores the key in app-private storage excluded from Android backups; the PC key file is encrypted with Windows DPAPI per user.
+
+Keep the firewall rules scoped to private networks and avoid hostile/shared networks regardless.
 
 ## Building from source
 

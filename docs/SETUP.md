@@ -13,7 +13,8 @@ Pair the phone and PC through the normal OS Bluetooth settings **before** starti
 - First launch: Windows may prompt to allow inbound TCP 8080 for LAN status queries. Allow it (private networks). To add manually, run as admin:
 
 ```powershell
-netsh advfirewall firewall add rule name="C4P" dir=in action=allow protocol=TCP localport=8080
+netsh advfirewall firewall add rule name="C4P" dir=in action=allow protocol=TCP localport=8080 profile=private
+netsh advfirewall firewall add rule name="C4P discovery" dir=in action=allow protocol=UDP localport=8080 profile=private
 ```
 
 The tray icon appears with menu items: Connect / Disconnect / Pause forwarding / Resume forwarding / Exit. Single instance enforced.
@@ -30,7 +31,16 @@ Usually not needed: the app lists your paired devices and you just tap the PC.
 
 ### Find your PC's LAN IP
 
-On the PC run `ipconfig` and use the IPv4 of your active adapter (Wi-Fi/Ethernet), e.g. `192.168.1.50`.
+Usually not needed either: in the app's Setup screen tap **Find PC automatically** — it broadcasts on the Wi-Fi network and fills the IP field with the answer (the PC's tray app announces its machine name). Manual entry stays as fallback (`ipconfig` on the PC, IPv4 of the active adapter).
+
+### Copy the pairing key
+
+Easiest way - don't type anything:
+
+1. Right-click the tray icon > **Show pairing QR...**
+2. In the app's Setup screen tap **Scan pairing QR** and point the camera at it.
+
+The app stores the key, tries each IP embedded in the code with an authenticated handshake, and saves whichever answers. Fallbacks if you prefer manual: tray menu *Copy pairing key* into the Setup field (`%APPDATA%\C4P\pairing-key.txt`), plus the IP/MAC fields below. The PC rejects all commands from clients that cannot present the matching key.
 
 ### Associate the PC in the app
 
@@ -74,6 +84,7 @@ Edit `inject-prefs.example.xml` first and put in your real IP/MAC. Only works on
 
 ## 7. Known limitations
 
-- TCP status protocol is unauthenticated - home networks only.
+- TCP protocol authenticates via a PSK challenge-response handshake, but post-handshake traffic is not encrypted - home networks only.
+- If the pairing key is deleted or regenerated, re-paste it into the phone's Setup screen ("Test PC link" reports `ERR AUTH_FAILED` when keys don't match).
 - No AVRCP metadata/volume sync; volume is controlled at the source device.
 - Hidden Android APIs (`setActiveDevice`, reflective `connect`) are used deliberately; they work today but are formally unsupported by Google and could change in future Android versions. The code falls back to profile disconnect when they are unavailable.

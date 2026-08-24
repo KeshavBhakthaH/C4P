@@ -9,6 +9,7 @@ internal sealed class TrayContext : ApplicationContext
 {
     private readonly AudioSinkService _service = new();
     private readonly CommandServer _server;
+    private readonly DiscoveryResponder _responder = new();
     private readonly NotifyIcon _icon;
     private readonly Icon _appIcon;
     private readonly ToolStripMenuItem _connectItem;
@@ -17,6 +18,7 @@ internal sealed class TrayContext : ApplicationContext
     private SinkStatus _status = new(SinkState.Disconnected, false, string.Empty, false);
 
     private Control? _marshalTarget;
+    private System.Windows.Forms.Timer? _clipboardClearTimer;
 
     public TrayContext()
     {
@@ -30,6 +32,8 @@ internal sealed class TrayContext : ApplicationContext
         _pauseItem = new ToolStripMenuItem("Pause forwarding", null, (_, _) => Safe(TogglePauseAsync));
 
         var exitItem = new ToolStripMenuItem("Exit", null, (_, _) => ExitApplication());
+        var keyItem = new ToolStripMenuItem("Copy pairing key", null, (_, _) => CopyPairingKey());
+        var qrItem = new ToolStripMenuItem("Show pairing QR...", null, (_, _) => ShowPairingQr());
 
         var menu = new ContextMenuStrip();
         menu.Items.AddRange(new ToolStripItem[]
@@ -38,6 +42,9 @@ internal sealed class TrayContext : ApplicationContext
             _disconnectItem,
             new ToolStripSeparator(),
             _pauseItem,
+            new ToolStripSeparator(),
+            qrItem,
+            keyItem,
             new ToolStripSeparator(),
             exitItem
         });
@@ -70,10 +77,11 @@ internal sealed class TrayContext : ApplicationContext
         try
         {
             _server.Start();
+            _responder.Start();
         }
         catch (Exception ex)
         {
-            ShowBalloon("C4P", $"TCP server failed to start on port {CommandServer.DefaultPort}: {ex.Message}");
+            ShowBalloon("C4P", $"LAN server failed to start on port {CommandServer.DefaultPort}: {ex.Message}");
         }
 
         _service.Start();
@@ -82,6 +90,54 @@ internal sealed class TrayContext : ApplicationContext
             ShowBalloon("C4P", $"Ready. Device found: {_status.DeviceName}");
         else
             ShowBalloon("C4P", "Waiting for a paired audio device.");
+    }
+
+    private void ShowPairingQr()
+    {
+        try
+        {
+            using QrForm form = new();
+            form.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            ShowBalloon("C4P", $"Could not show pairing QR: {ex.Message}");
+        }
+    }
+
+    private void CopyPairingKey()
+    {
+        try
+        {
+            Clipboard.SetText(PairingKey.Secret);
+
+            if (_clipboardClearTimer is null)
+            {
+                _clipboardClearTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
+                _clipboardClearTimer.Tick += (_, _) =>
+                {
+                    _clipboardClearTimer!.Stop();
+
+                    try
+                    {
+                        if (Clipboard.GetText() == PairingKey.Secret)
+                            Clipboard.Clear();
+                    }
+                    catch
+                    {
+                    }
+                };
+            }
+
+            _clipboardClearTimer.Stop();
+            _clipboardClearTimer.Start();
+
+            ShowBalloon("C4P", $"Pairing key copied (clears in 30s). Stored at {PairingKey.GetKeyFilePath()}");
+        }
+        catch (Exception ex)
+        {
+            ShowBalloon("C4P", $"Could not copy pairing key: {ex.Message}");
+        }
     }
 
     private static Icon LoadEmbeddedIcon()
@@ -155,6 +211,9 @@ internal sealed class TrayContext : ApplicationContext
         try
         {
             await _server.StopAsync();
+            _responder.Stop();
+            _clipboardClearTimer?.Dispose();
+            _clipboardClearTimer = null;
             await _service.DisposeAsync();
         }
         catch

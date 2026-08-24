@@ -6,4 +6,5 @@
 <map>
     <string name="pc_mac">AA:BB:CC:DD:EE:FF</string>
     <string name="pc_ip">192.168.1.50</string>
+    <string name="pc_key">64-hex-char pairing key from %APPDATA%\C4P\pairing-key.txt</string>
 </map>
