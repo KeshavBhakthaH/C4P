@@ -19,6 +19,18 @@ public static class Prefs
         prefs?.Edit()?.PutString(key, value)?.Apply();
     }
 
+    public static void Remove(Context context, params string[] keys)
+    {
+        var editor = context.GetSharedPreferences(PrefName, FileCreationMode.Private)?.Edit();
+        if (editor is null)
+            return;
+
+        foreach (string key in keys)
+            editor.Remove(key);
+
+        editor.Apply();
+    }
+
     public static void AppendLog(Context context, string line)
     {
         var existing = Get(context, LogKey, string.Empty) ?? string.Empty;

@@ -1,5 +1,9 @@
 # C4P Security Hardening Brief
 
+> **SUPERSEDED (2026-08-25):** the entire LAN control layer described here was removed in the
+> simplification pass - see [SIMPLIFICATION-BRIEF.md](SIMPLIFICATION-BRIEF.md). The app now opens
+> zero network ports; this document is kept for history only.
+
 Date: 2026-08-24
 Scope: `pc-tray/` + `android-remote/` — fixes for the issues found in the August 2026 security review, with minimal changes to app logic.
 

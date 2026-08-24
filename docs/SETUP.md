@@ -9,13 +9,7 @@ Pair the phone and PC through the normal OS Bluetooth settings **before** starti
 ## 2. PC tray app
 
 - One-time prerequisite: install the [.NET 8 Desktop Runtime (x64)](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) if you don't already have it (check with `dotnet --list-runtimes` — look for `Microsoft.WindowsDesktop.App 8.x`).
-- Download `c4p-tray-win-x64.zip` (~6 MB) from [Releases](../../releases), unzip anywhere, run `C4P.exe`.
-- First launch: Windows may prompt to allow inbound TCP 8080 for LAN status queries. Allow it (private networks). To add manually, run as admin:
-
-```powershell
-netsh advfirewall firewall add rule name="C4P" dir=in action=allow protocol=TCP localport=8080 profile=private
-netsh advfirewall firewall add rule name="C4P discovery" dir=in action=allow protocol=UDP localport=8080 profile=private
-```
+- Download `c4p-tray-win-x64.zip` (~6 MB) from [Releases](../../releases), unzip anywhere, run `C4P.exe` (or `Launch C4P.bat`). No firewall prompt - the app opens no network ports.
 
 The tray icon appears with menu items: Connect / Disconnect / Pause forwarding / Resume forwarding / Exit. Single instance enforced.
 
@@ -24,27 +18,9 @@ The tray icon appears with menu items: Connect / Disconnect / Pause forwarding /
 - Install `c4p-remote.apk` from [Releases](../../releases) ("install unknown apps" permission required; Play Protect may show an unsigned-publisher warning because it is debug-signed).
 - Open the app, grant `BLUETOOTH_CONNECT` (+ notifications on Android 13+).
 
-### Find your PC's Bluetooth MAC
-
-Usually not needed: the app lists your paired devices and you just tap the PC.
-(Manual entry uses format like `1A:2B:3C:4D:5E:6F`.)
-
-### Find your PC's LAN IP
-
-Usually not needed either: in the app's Setup screen tap **Find PC automatically** — it broadcasts on the Wi-Fi network and fills the IP field with the answer (the PC's tray app announces its machine name). Manual entry stays as fallback (`ipconfig` on the PC, IPv4 of the active adapter).
-
-### Copy the pairing key
-
-Easiest way - don't type anything:
-
-1. Right-click the tray icon > **Show pairing QR...**
-2. In the app's Setup screen tap **Scan pairing QR** and point the camera at it.
-
-The app stores the key, tries each IP embedded in the code with an authenticated handshake, and saves whichever answers. Fallbacks if you prefer manual: tray menu *Copy pairing key* into the Setup field (`%APPDATA%\C4P\pairing-key.txt`), plus the IP/MAC fields below. The PC rejects all commands from clients that cannot present the matching key.
-
 ### Associate the PC in the app
 
-Open the app (Setup opens automatically until a PC is associated) > fill IP > **tap your PC under "Paired devices"**. The sink service restarts and associates instantly. Typing the MAC manually still works as a fallback.
+Open the app - Setup opens automatically until a PC is associated. Tap **Pick your PC** and choose your PC from your existing Bluetooth paired devices (devices that advertise the A2DP speaker role are listed first). The sink service restarts and associates instantly.
 
 You can also tap the notification itself to open the app.
 
@@ -73,18 +49,16 @@ Restart-Service bthserv, BthAvctpSvc, BTAGService
 
 ## 6. Dev-only preference injection
 
-For development you can push prefs straight onto a debug build instead of typing them:
+For development you can push prefs straight onto a debug build instead of picking in the UI:
 
 ```bash
 adb push inject-prefs.example.xml /data/local/tmp/prefs.xml
 adb shell "run-as dev.a2dpremote.remote sh -c 'cp /data/local/tmp/prefs.xml shared_prefs/a2dp_remote_prefs.xml'"
 ```
 
-Edit `inject-prefs.example.xml` first and put in your real IP/MAC. Only works on debug builds.
+Edit `inject-prefs.example.xml` first and put in your real PC MAC. Only works on debug builds.
 
 ## 7. Known limitations
 
-- TCP protocol authenticates via a PSK challenge-response handshake, but post-handshake traffic is not encrypted - home networks only.
-- If the pairing key is deleted or regenerated, re-paste it into the phone's Setup screen ("Test PC link" reports `ERR AUTH_FAILED` when keys don't match).
 - No AVRCP metadata/volume sync; volume is controlled at the source device.
 - Hidden Android APIs (`setActiveDevice`, reflective `connect`) are used deliberately; they work today but are formally unsupported by Google and could change in future Android versions. The code falls back to profile disconnect when they are unavailable.

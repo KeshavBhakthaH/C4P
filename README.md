@@ -7,7 +7,7 @@ C4P routes your phone's audio (music, podcasts) through your PC's output. Built 
 ```
 Phone ──(A2DP over Bluetooth)──> PC (acts as an A2DP sink / "BT speaker")
   │                                  │
-  └─ Android remote app              └─ Tray app hosts the sink + optional LAN status port
+  └─ Android remote app              └─ Tray app hosts the sink
      drives connect/pause/resume
 ```
 
@@ -45,23 +45,12 @@ See [docs/SETUP.md](docs/SETUP.md) for the full walkthrough (firewall rule, find
 1. Pair phone ↔ PC in Windows/Android Bluetooth settings.
 2. Run `pc-tray`'s `Launch C4P.bat` — it starts `C4P.exe` directly if the .NET 8 Desktop Runtime is present, and otherwise offers to download and install it automatically (plain `C4P.exe` also works once the runtime is installed).
 3. Install `android-remote` APK.
-4. In the app: open **Setup**, enter the PC's LAN IP, then tap the PC under **Paired devices** (or type its MAC and hit **Save MAC + restart sink service**).
+4. In the app: open **Setup**, tap **Pick your PC**, and choose your PC from your existing paired devices.
 5. Audio should route to the PC within seconds. Control via the notification or the single Pause/Resume button.
 
 ## Security note
 
-The LAN port is authenticated with a pre-shared key:
-
-- The tray app generates a random 256-bit pairing key on first run and stores it DPAPI-encrypted (current user) at `%APPDATA%\C4P\pairing-key.txt`.
-- Pair by scanning: tray menu **Show pairing QR...** displays a code containing the PC's private IPs, port, and key; the phone app's **Scan pairing QR** reads it and completes the handshake test automatically. The key travels screen-to-camera only - never over the network.
-- Manual fallback: tray menu **Copy pairing key**, paste into the phone's Setup screen. The clipboard auto-clears after 30 seconds.
-- Every TCP session starts with an HMAC-SHA256 challenge-response handshake (`CHALLENGE <nonce>` / `AUTH <hmac>`); commands are rejected unless the phone proves knowledge of the key. The key itself never crosses the wire, and captured handshakes cannot be replayed (fresh nonce per connection).
-- After the handshake, both sides derive a session MAC key from the nonce, and every command and response is sent with an HMAC tag - a man-in-the-middle cannot read-modify or inject commands. Tampered lines are rejected (`ERR TAMPERED`).
-- The command listener only accepts connections from private/LAN addresses, caps concurrent clients, and temporarily blocks IPs after repeated failed handshakes.
-- UDP discovery requires the requester to send a random nonce and replies with an HMAC tag over it; the phone ignores announces it cannot verify once a pairing key is stored, so a rogue host can't poison the saved PC IP.
-- The phone stores the key in app-private storage excluded from Android backups; the PC key file is encrypted with Windows DPAPI per user.
-
-Keep the firewall rules scoped to private networks and avoid hostile/shared networks regardless.
+The app opens **zero network ports** on both ends. All control traffic (connect, pause, resume, status) rides on the OS-level Bluetooth link between two devices that are paired in normal system settings - there is no LAN listener, no pairing key, and no discovery protocol to attack. Trust is exactly the trust you already granted when you paired the phone and PC in Bluetooth settings.
 
 ## Building from source
 

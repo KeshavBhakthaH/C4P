@@ -19,18 +19,16 @@ namespace A2dpRemote;
 public class MainActivity : Activity
 {
     private const int PermissionRequestCode = 7;
-    private const int ScanRequestCode = 31;
+
+    private const string A2dpSinkUuid = "0000110b-0000-1000-8000-00805f9b34fb";
 
     private TextView _statusView = null!;
     private Button _pauseButton = null!;
-    private Button _scanButton = null!;
     private Button _setupToggle = null!;
     private LinearLayout _setupSection = null!;
     private Button _logToggle = null!;
     private LinearLayout _logSection = null!;
     private TextView _logView = null!;
-    private EditText _ipBox = null!;
-    private EditText _keyBox = null!;
 
     private readonly Handler _uiHandler = new(Looper.MainLooper!);
     private Java.Lang.Runnable? _tick;
@@ -40,7 +38,11 @@ public class MainActivity : Activity
     {
         base.OnCreate(savedInstanceState);
         SetContentView(BuildLayout());
+        Prefs.Remove(this, "pc_ip", "pc_key");
         EnsurePermissionsAndMaybeStartService();
+
+        if (string.IsNullOrEmpty(Prefs.Get(this, "pc_mac", null)) && HasBluetoothPermission())
+            ShowPcPicker();
     }
 
     protected override void OnResume()
@@ -57,61 +59,6 @@ public class MainActivity : Activity
         if (_tick != null)
             _uiHandler.RemoveCallbacks(_tick);
         base.OnPause();
-    }
-
-    protected override void OnActivityResult(int requestCode, Result resultCode, Intent? data)
-    {
-        base.OnActivityResult(requestCode, resultCode, data);
-
-        if (requestCode != ScanRequestCode || data is null)
-            return;
-
-        string? payload = data.GetStringExtra(ScanPairingActivity.ExtraPayload);
-
-        if (resultCode != Result.Ok || payload is null)
-            return;
-
-        _ = ApplyPairingPayloadAsync(payload);
-    }
-
-    private async Task ApplyPairingPayloadAsync(string? payload)
-    {
-        if (!PcPairing.TryParse(payload, out string[] ips, out int port, out string key, out string? mac))
-        {
-            Toast.MakeText(this, "That QR was not a C4P pairing code.", ToastLength.Long)?.Show();
-            Log("Scan: QR did not contain a valid C4P payload.");
-            return;
-        }
-
-        Prefs.Set(this, "pc_key", key);
-        if (_keyBox.Text?.Trim() != key)
-            _keyBox.Text = key;
-
-        Log($"Scanned pairing QR: {ips.Length} candidate IP(s).");
-
-        foreach (string ip in ips)
-        {
-            string reply = await PcClient.SendAsync(ip, port, "STATUS", key);
-            Log($"Pair test {ip}: {reply}");
-
-            if (reply.StartsWith("STATUS", StringComparison.Ordinal) || reply.StartsWith("OK", StringComparison.Ordinal))
-            {
-                Prefs.Set(this, "pc_ip", ip);
-                _ipBox.Text = ip;
-
-                if (!string.IsNullOrEmpty(mac))
-                    AssociateAndRestart(mac);
-                else
-                    Log("QR had no Bluetooth MAC - keeping the existing association.");
-
-                Toast.MakeText(this, $"Paired with PC at {ip}", ToastLength.Long)?.Show();
-                return;
-            }
-        }
-
-        Toast.MakeText(this,
-            $"Key saved, but no PC answered at {string.Join(", ", ips)}. Check Wi-Fi and firewall.",
-            ToastLength.Long)?.Show();
     }
 
     private View BuildLayout()
@@ -143,92 +90,16 @@ public class MainActivity : Activity
 
         _setupSection = new LinearLayout(this) { Orientation = Orientation.Vertical, Visibility = ViewStates.Gone };
 
-        _scanButton = new Button(this) { Text = "Scan pairing QR" };
-        _scanButton.Click += (_, _) =>
+        var hint = new TextView(this)
         {
-            StartActivityForResult(typeof(ScanPairingActivity), ScanRequestCode);
+            Text = "Pair your PC in Android Bluetooth settings first,\nthen tap below and choose it.",
+            TextSize = 13f
         };
-        _setupSection.AddView(_scanButton);
+        _setupSection.AddView(hint);
 
-        _ipBox = new EditText(this)
-        {
-            Hint = "PC IP address (e.g. 192.168.1.50)",
-            Text = Prefs.Get(this, "pc_ip", string.Empty)
-        };
-        _ipBox.FocusChange += (_, e) =>
-        {
-            if (!e.HasFocus)
-                Prefs.Set(this, "pc_ip", _ipBox.Text.Trim());
-        };
-        _setupSection.AddView(_ipBox, Pad(0, 8, 0, 0));
-
-        _keyBox = new EditText(this)
-        {
-            Hint = "Pairing key (PC tray menu: Copy pairing key)",
-            Text = Prefs.Get(this, "pc_key", string.Empty),
-            InputType = Android.Text.InputTypes.ClassText | Android.Text.InputTypes.TextVariationPassword
-        };
-        _keyBox.FocusChange += (_, e) =>
-        {
-            if (!e.HasFocus)
-                Prefs.Set(this, "pc_key", _keyBox.Text.Trim());
-        };
-        _setupSection.AddView(_keyBox, Pad(0, 8, 0, 0));
-
-        var keyToggle = new Button(this) { Text = "Show key" };
-        keyToggle.Click += (_, _) =>
-        {
-            const int TextVariationMask = 0x0000f000;
-
-            bool hidden = ((int)_keyBox.InputType & TextVariationMask)
-                == (int)Android.Text.InputTypes.TextVariationPassword;
-
-            _keyBox.InputType = hidden
-                ? Android.Text.InputTypes.ClassText | Android.Text.InputTypes.TextVariationNormal
-                : Android.Text.InputTypes.ClassText | Android.Text.InputTypes.TextVariationPassword;
-
-            keyToggle.Text = hidden ? "Hide key" : "Show key";
-        };
-        _setupSection.AddView(keyToggle, Pad(0, 4, 0, 0));
-
-        var findButton = new Button(this) { Text = "Find PC automatically" };
-        findButton.Click += async (_, _) =>
-        {
-            findButton.Enabled = false;
-            Toast.MakeText(this, "Searching for PC...", ToastLength.Short)?.Show();
-
-            List<(string Ip, string Name)> found = await PcDiscovery.DiscoverAsync(Prefs.Get(this, "pc_key", string.Empty));
-
-            if (found.Count > 0)
-            {
-                (string ip, string name) = found[0];
-                _ipBox.Text = ip;
-                Prefs.Set(this, "pc_ip", ip);
-
-                string extra = found.Count > 1 ? $" (+{found.Count - 1} more)" : string.Empty;
-                Toast.MakeText(this, $"Found PC '{name}' at {ip}{extra}", ToastLength.Long)?.Show();
-                Log($"Discovery: '{name}' at {ip}{extra}");
-            }
-            else
-            {
-                Toast.MakeText(this, "No PC answered. Type the IP manually.", ToastLength.Long)?.Show();
-                Log("Discovery: no PC answered.");
-            }
-
-            findButton.Enabled = true;
-        };
-        _setupSection.AddView(findButton, Pad(0, 8, 0, 0));
-
-        var refreshButton = new Button(this) { Text = "Test PC link" };
-        refreshButton.Click += async (_, _) =>
-        {
-            Prefs.Set(this, "pc_ip", _ipBox.Text.Trim());
-            Prefs.Set(this, "pc_key", _keyBox.Text.Trim());
-            string reply = await PcClient.SendAsync(_ipBox.Text.Trim(), 8080, "STATUS", _keyBox.Text.Trim());
-            Log($"PC STATUS: {reply}");
-            Toast.MakeText(this, $"PC: {reply}", ToastLength.Long)?.Show();
-        };
-        _setupSection.AddView(refreshButton, Pad(0, 8, 0, 0));
+        var pickButton = new Button(this) { Text = "Pick your PC" };
+        pickButton.Click += (_, _) => ShowPcPicker();
+        _setupSection.AddView(pickButton, Pad(0, 8, 0, 0));
 
         root.AddView(_setupSection);
 
@@ -254,6 +125,105 @@ public class MainActivity : Activity
         }
 
         return scroll;
+    }
+
+    private bool HasBluetoothPermission()
+    {
+        return (int)Build.VERSION.SdkInt < 31 ||
+               CheckSelfPermission(Manifest.Permission.BluetoothConnect) == Permission.Granted;
+    }
+
+    private void ShowPcPicker()
+    {
+        if (!HasBluetoothPermission())
+        {
+            Toast.MakeText(this, "Grant the Bluetooth permission first.", ToastLength.Long)?.Show();
+            RequestPermissions(new[] { Manifest.Permission.BluetoothConnect }, PermissionRequestCode);
+            return;
+        }
+
+        ICollection<BluetoothDevice> bonded;
+        try
+        {
+            bonded = BluetoothAdapter.DefaultAdapter!.BondedDevices!;
+        }
+        catch (Exception ex)
+        {
+            Log($"Picker failed: {ex.Message}");
+            Toast.MakeText(this, "Could not list paired devices.", ToastLength.Long)?.Show();
+            return;
+        }
+
+        if (bonded is null || bonded.Count == 0)
+        {
+            Toast.MakeText(this,
+                "No paired devices. Pair your PC in Android Bluetooth settings first.",
+                ToastLength.Long)?.Show();
+            return;
+        }
+
+        List<BluetoothDevice> candidates = new();
+
+        foreach (BluetoothDevice device in bonded)
+        {
+            bool isA2dpSink = false;
+
+            try
+            {
+                ParcelUuid[]? uuids = device.GetUuids();
+
+                if (uuids != null)
+                {
+                    foreach (ParcelUuid uuid in uuids)
+                    {
+                        if (uuid?.Uuid?.ToString()?.Equals(A2dpSinkUuid, StringComparison.OrdinalIgnoreCase) == true)
+                        {
+                            isA2dpSink = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            if (isA2dpSink)
+                candidates.Add(device);
+        }
+
+        if (candidates.Count == 0)
+            candidates.AddRange(bonded);
+
+        var labels = new string[candidates.Count];
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            BluetoothDevice device = candidates[i];
+            string name;
+
+            try
+            {
+                name = device.Name ?? device.Address;
+            }
+            catch
+            {
+                name = device.Address;
+            }
+
+            labels[i] = $"{name}  ({device.Address})";
+        }
+
+        new AlertDialog.Builder(this)
+            .SetTitle("Paired devices")
+            .SetItems(labels, (_, e) =>
+            {
+                BluetoothDevice chosen = candidates[e.Which];
+                Log($"Associated with {labels[e.Which]}.");
+                AssociateAndRestart(chosen.Address);
+            })
+            .SetNegativeButton("Cancel", (_, _) => { })
+            .Show();
     }
 
     private void AssociateAndRestart(string? macInput)
@@ -314,8 +284,7 @@ public class MainActivity : Activity
 
     private void EnsurePermissionsAndMaybeStartService()
     {
-        bool bluetoothReady = (int)Build.VERSION.SdkInt < 31 ||
-            CheckSelfPermission(Manifest.Permission.BluetoothConnect) == Permission.Granted;
+        bool bluetoothReady = HasBluetoothPermission();
 
         var needed = new List<string>();
         if (!bluetoothReady)
@@ -355,8 +324,13 @@ public class MainActivity : Activity
                 bluetoothGranted = true;
         }
 
-        if (bluetoothGranted)
-            StartForegroundService(new Intent(this, typeof(SinkWatchService)));
+        if (!bluetoothGranted)
+            return;
+
+        StartForegroundService(new Intent(this, typeof(SinkWatchService)));
+
+        if (string.IsNullOrEmpty(Prefs.Get(this, "pc_mac", null)))
+            ShowPcPicker();
     }
 
     private void SendServiceAction(string action)
