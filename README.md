@@ -40,7 +40,7 @@ Both devices must be **paired beforehand** in normal OS settings. Never pair whi
 
 ## Setup
 
-See [docs/SETUP.md](docs/SETUP.md) for the full walkthrough (firewall rule, finding your PC's MAC, troubleshooting). Short version:
+See [docs/SETUP.md](docs/SETUP.md) for the full walkthrough, or [docs/INSTALL-GUIDE.md](docs/INSTALL-GUIDE.md) for a beginner-friendly step-by-step guide with screenshots-level detail. Short version:
 
 1. Pair phone ↔ PC in Windows/Android Bluetooth settings.
 2. Run `pc-tray`'s `Launch C4P.bat` — it starts `C4P.exe` directly if the .NET 8 Desktop Runtime is present, and otherwise offers to download and install it automatically (plain `C4P.exe` also works once the runtime is installed).

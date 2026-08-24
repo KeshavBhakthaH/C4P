@@ -22,6 +22,8 @@ This version is a **major cleanup** that makes C4P simpler, safer, and easier to
 
 ## How to install (plain-English guide)
 
+**Full step-by-step walkthrough with troubleshooting: [INSTALL-GUIDE.md](INSTALL-GUIDE.md)**
+
 ### What you need
 - A Windows 10/11 PC with Bluetooth
 - An Android phone (Android 8.0 or newer)
