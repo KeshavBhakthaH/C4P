@@ -11,6 +11,12 @@ Phone ──(A2DP over Bluetooth)──> PC (acts as an A2DP sink / "BT speaker"
      drives connect/pause/resume
 ```
 
+## Screenshots
+
+| PC tray menu | Android remote | Idle footprint |
+|---|---|---|
+| <img src="docs/images/tray-menu.png" alt="C4P tray context menu" width="150"> | <img src="docs/images/remote-app.jpg" alt="C4P Android remote app, paused state" width="190"> | <img src="docs/images/memory-usage.png" alt="Task Manager showing the C4P tray process idling" width="330"> |
+
 ## Components
 
 | Folder | What it is | Tech |

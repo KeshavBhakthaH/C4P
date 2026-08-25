@@ -61,6 +61,8 @@ This is the same thing you'd do with wireless headphones.
 7. Look at the bottom-right corner of your screen near the clock. You may need to click the **^ arrow** to see hidden icons.
 8. You should see a small **C4P icon**. Right-click it and you'll see: *Connect / Disconnect / Pause forwarding / Exit*.
 
+   ![C4P tray icon context menu](images/tray-menu.png)
+
 That's the PC done. It now just waits for your phone — you never need to touch it again.
 
 ---
@@ -98,6 +100,9 @@ Android calls apps outside the Play Store "unknown apps". You'll allow them just
 - Open C4P (or its notification) and press the big button:
   - **Pause forwarding** = sound instantly returns to your phone's speaker
   - **Resume forwarding** = sound goes back to the PC
+
+  ![C4P Android remote app in the paused state](images/remote-app.jpg)
+
 - To stop completely: pause, or right-click the tray icon on the PC → **Exit**.
 
 ---
